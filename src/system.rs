@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use sysinfo::{CpuExt, System, SystemExt, NetworkExt};
+use sysinfo::{CpuExt, System, SystemExt, NetworkExt, ProcessExt};
 
 
 #[derive(Debug)]
@@ -10,7 +10,7 @@ pub struct Size {
 
 impl Size {
     pub fn convent_from(size: u64) -> Self {
-        let mut size_ = size as f32;
+        let mut size_ = size as f32 / 8_f32;
         let mut level = 1_u8;
         loop {
             if size_ < 1.0 || level >= 5 {
@@ -22,10 +22,10 @@ impl Size {
         Self {
             size: size_,
             unit: match level {
-                1 => 'B',
-                2 => 'K',
-                3 => 'M',
-                4 => 'G',
+                1 => 'k',
+                2 => 'M',
+                3 => 'G',
+                4 => 'T',
                 5 => 'P',
                 _ => unreachable!()
             }
@@ -180,12 +180,54 @@ impl AppSystemInfo {
         &self.network_info
     }
 
+    pub fn get_process_info(&mut self) -> (Vec<&str>, Vec<Vec<String>>) {
+        let process_columns = vec![
+            "CPU%",
+            "MEM%",
+            "PID",
+            // "USER",
+            "VIRT",
+            "RES",
+            "TIME+",
+            // "PRI",
+            // "NI",
+            // "THR",
+            "S",
+            "R/s",
+            "W/s",
+            "Command",
+        ];
+        let mut process_data = vec![];
+        self.sys.refresh_processes();
+
+        for (pid, process) in self.sys.processes() {
+            process_data.push(vec![
+               format!("{:.1}", process.cpu_usage()),        // CPU%
+               format!("{:.1}", process.memory() / self.sys.total_memory()),        // MEM%
+               format!("{}", pid.to_string()),        // PID
+               // format!("{}", self.sys.get_user_by_id(process.user_id().unwrap()).unwrap().name()),        // USER
+               format!("{}", Size::convent_from(process.virtual_memory()).format()),        // VIRT
+               format!("{}", Size::convent_from(process.memory()).format()),        // RES
+               format!("{}", process.run_time()),        // TIME+
+               // format!(pid.to_string()),        // PRI
+               // format!(pid.to_string()),        // NI
+               // format!(pid.to_string()),        // THR
+               format!("{}", process.status().to_string()),        // S
+               format!("{}", Size::convent_from(process.disk_usage().read_bytes).format()),        // R/s
+               format!("{}", Size::convent_from(process.disk_usage().written_bytes).format()),        // W/s
+               format!("{}", process.cmd().join(" ")),        // Command
+            ])
+        }
+        return (process_columns, process_data);
+    }
+
     pub fn refresh_all(&mut self) {
         self.refresh_global_cpu_usage();
 
         self.refresh_memory_info();
 
         self.refresh_network_info();
+
     }
 
 }

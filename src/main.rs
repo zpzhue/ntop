@@ -22,18 +22,24 @@ fn main() -> AppResult<()> {
     let terminal = Terminal::new(backend)?;
     let events = EventHandler::new(500);
     let mut tui = Tui::new(terminal, events);
+    let mut refresh = false;
     tui.init()?;
 
     // Start the main loop.
     while app.running {
-        // Render the user interface.
-        tui.draw(&mut app)?;
+        if refresh {
+            // Render the user interface.
+            tui.draw(&mut app)?;
+        }else {
+            refresh = true
+        }
+
         // Handle events.
         match tui.events.next()? {
             Event::Tick => app.tick(),
-            Event::Key(key_event) => handle_key_events(key_event, &mut app)?,
-            Event::Mouse(_) => {}
-            Event::Resize(_, _) => {}
+            Event::Key(key_event) => { refresh = handle_key_events(key_event, &mut app)? },
+            Event::Mouse(_) => { refresh = false;}
+            Event::Resize(_, _) => { refresh = false; }
         }
     }
 

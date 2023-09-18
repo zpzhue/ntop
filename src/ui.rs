@@ -2,13 +2,13 @@ use ratatui::{
     backend::Backend,
     layout::Alignment,
     style::{Color, Style},
-    widgets::{Block, BorderType, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Modifier;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{List, ListItem, Sparkline};
+use ratatui::widgets::{Cell, List, ListItem, Row, Sparkline, Table, TableState};
 use crate::system::Size;
 use crate::system::AppSystemInfo;
 
@@ -87,7 +87,41 @@ fn render_network_info<B: Backend>(frame: &mut Frame<B>, area: Rect, app_sys: &m
 }
 
 
-fn render_content<B: Backend>(frame: &mut Frame<B>, area: Rect,  app_sys: &mut AppSystemInfo) {
+fn render_process_table<B: Backend>(frame: &mut Frame<B>, area: Rect, app_sys: &mut AppSystemInfo, state: &mut TableState) {
+    let (process_column, process_data) = app_sys.get_process_info();
+
+    let header_cells = process_column
+        .iter()
+        .map(|h| Cell::from(*h).style(Style::default().add_modifier(Modifier::BOLD)));
+    let header = Row::new(header_cells)
+        .style(Style::default().bg(Color::Green))
+        .height(1)
+        .bottom_margin(1);
+    let rows = process_data.iter().map(|item| {
+        let cells = item.iter().map(|c| Cell::from(c.as_str()));
+        Row::new(cells).height(1_u16).bottom_margin(1)
+    });
+
+    let table = Table::new(rows)
+        .header(header)
+        .block(Block::default().borders(Borders::ALL).title("Table"))
+        .widths(&[
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Percentage(30),
+        ]);
+    frame.render_stateful_widget(table, area, state);
+}
+
+
+fn render_content<B: Backend>(frame: &mut Frame<B>, area: Rect,  app_sys: &mut AppSystemInfo, state: &mut TableState) {
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(30), Constraint::Percentage(70)].as_ref())
@@ -104,14 +138,15 @@ fn render_content<B: Backend>(frame: &mut Frame<B>, area: Rect,  app_sys: &mut A
     render_network_info(frame, top_chunks[1], app_sys);
 
 
-    frame.render_widget(
-        Block::default()
-            .title_alignment(Alignment::Center)
-            .title("    Process Info    ")
-            .borders(Borders::ALL)
-            .border_type(BorderType::Plain),
-        right_chunks[1]
-    );
+    // frame.render_widget(
+    //     Block::default()
+    //         .title_alignment(Alignment::Center)
+    //         .title("    Process Info    ")
+    //         .borders(Borders::ALL)
+    //         .border_type(BorderType::Plain),
+    //     right_chunks[1]
+    // );
+    render_process_table(frame, right_chunks[1], app_sys, state);
 
 
 
@@ -185,6 +220,6 @@ pub fn render<B: Backend>(app: &mut App, frame: &mut Frame<'_, B>) {
 
     render_sider(frame, chunks[0], &app.app_sys_info);
 
-    render_content(frame, chunks[1],&mut app.app_sys_info)
+    render_content(frame, chunks[1],&mut app.app_sys_info, &mut app.state)
 
 }

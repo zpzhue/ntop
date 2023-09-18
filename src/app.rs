@@ -1,4 +1,5 @@
 use std::error;
+use ratatui::widgets::TableState;
 
 use crate::system::AppSystemInfo;
 
@@ -14,6 +15,8 @@ pub struct App {
     /// counter
     pub counter: u8,
 
+    pub state: TableState,
+
     pub app_sys_info: AppSystemInfo
 
 }
@@ -24,6 +27,7 @@ impl Default for App {
         Self {
             running: true,
             counter: 0,
+            state: TableState::default(),
             app_sys_info: AppSystemInfo::default()
         }
     }
